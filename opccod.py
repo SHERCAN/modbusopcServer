@@ -1,35 +1,41 @@
-from opcua import ua, Server
-import datetime
-import time
+import asyncio
+import sys
+sys.path.insert(0, "..")
+
+from asyncua import ua, Server
+from asyncua.common.node import Node
+from asyncua.server.users import UserRole, User
+users_db = {
+    "admin":"admin"
+}
+class UserManager:
+    def get_user(self, iserver, username=None, password=None, certificate=None):
+         if username in users_db and password == users_db[username]:
+             return User(role=UserRole.User)
+
+async def main():
+    server = Server(user_manager=UserManager())
+    await server.init()
+    server.set_endpoint("opc.tcp://0.0.0.0:4840/2749614/")
+    # server.internal_server.InternalServer()
+    uri = "http://ejemplo.org"
+    idx = await server.register_namespace(uri)
+    # Obtener el nodo raíz de Objects
+    objects = server.nodes.objects
+    # Crear un objeto en el servidor
+    myobj = await objects.add_object(idx, "LaMejorFicha")
+    # Crear una variable en el objeto
+    myvar = await myobj.add_variable(idx, "Darly", "¿A que hora sales?")
+    myvar1 = await myobj.add_variable(idx, "Edad", 56)
+    myvar2 = await myobj.add_variable(idx, "Altura", 160.56)
+    # Hacer que la variable sea editable
+    await myvar.set_writable()
+    await myvar1.set_writable()
+    # Iniciar el servidor
+    async with server:
+        print("Servidor iniciado en opc.tcp://0.0.0.0:4840")
+        while True:
+            await asyncio.sleep(1)
 
 if __name__ == "__main__":
-    server = Server()
-    server.set_endpoint("opc.tcp://127.0.0.1:4840/freeopcua/server/")
-    server.set_server_name("Lo mejor soy yo")
-    server.set_security_policy([ua.SecurityPolicyType.NoSecurity])
-    uri = "http://sena.opcua.yefar"
-    idx = server.register_namespace(uri)
-    objects = server.get_objects_node()
-    myobj = objects.add_object(idx, "MyObject")
-    myobj1 = objects.add_object(idx, "Cositas")
-    myvar = myobj.add_variable(idx, "MyVariable", 0)
-    myvar1 = myobj.add_variable(idx, "Consola", 5)
-    cumple= myobj1.add_variable(idx,"Cumpleañera",26.1)
-    cumple.set_writable()
-    myvar.set_writable()
-    server.start()
-    print("Servidor OPC UA iniciado en opc.tcp://0.0.0.0:4840/freeopcua/server/")
-
-    try:
-        while True:
-            # Simular una actualización de la variable
-            new_value = datetime.datetime.now()
-            # print(f"Actualizando valor a: {new_value}")
-            #myvar.set_value(new_value)
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("Servidor detenido por el usuario.")
-    finally:
-        # Detener el servidor antes de salir
-        server.stop()
-        print("Servidor OPC UA detenido.")
+    asyncio.run(main())
